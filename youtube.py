@@ -1,15 +1,17 @@
 from pytubefix import YouTube
 from pydub import AudioSegment
-import os 
+import os
 import re
+
 
 def sanitize_filename(filename):
     """Replace invalid characters in filenames with underscores."""
     return re.sub(r'[\\/*?:"<>|]', "_", filename)
 
+
 def youtube_to_wav(youtube_url, output_folder="yt_audios"):
     # Download audio from YouTube
-    yt = YouTube(youtube_url,"WEB")
+    yt = YouTube(youtube_url, "WEB")
     title = yt.title
     sanitized_title = sanitize_filename(yt.title)
     stream = yt.streams.filter(only_audio=True).first()
@@ -24,4 +26,3 @@ def youtube_to_wav(youtube_url, output_folder="yt_audios"):
     print(f"Converted to {output_path}")
     os.remove(audio_file)
     return sanitized_title
-
