@@ -2,9 +2,10 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-8">
         <h2 class="mb-4">Generate AI Cover</h2>
         
+        <!-- Error and Success Messages -->
         {% if error %}
             <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
@@ -13,6 +14,7 @@
             <div class="alert alert-success">{{ message }}</div>
         {% endif %}
 
+        <!-- Form for Submitting YouTube URL and Model -->
         <form method="POST">
             <div class="mb-3">
                 <label for="youtube_url" class="form-label">YouTube URL:</label>
@@ -33,42 +35,106 @@
             <button type="submit" class="btn btn-primary">Generate Cover</button>
         </form>
 
+        <!-- Progress Container (Visible when task_id is present) -->
         {% if task_id %}
         <div class="mt-4" id="progress-container">
-            <h4>Processing Status</h4>
-            <div class="progress mb-2">
-                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+            <h4>Processing Status <span id="current-step" class="badge bg-secondary"></span></h4>
+            
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-3">
+                            <!-- Spinner for Visual Feedback -->
+                            <div class="spinner-border text-primary" role="status" id="processing-spinner">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div class="col-9">
+                            <!-- Status Message -->
+                            <div id="status-message" class="fw-bold mb-2">Initializing processing...</div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="progress">
+                                <div id="progress-bar" 
+                                     class="progress-bar progress-bar-striped" 
+                                     role="progressbar" 
+                                     style="width: 0%"
+                                     aria-valuenow="0" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                            
+                            <!-- Queue Status and Timestamp -->
+                            <div class="mt-2 text-muted small" id="queue-status"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p id="status-message">Starting processing...</p>
+
+            <!-- Error Container (Hidden by Default) -->
+            <div id="error-container" class="alert alert-danger d-none"></div>
         </div>
 
+        <!-- JavaScript for Status Updates -->
         <script>
             const taskId = "{{ task_id }}";
-            
+            let refreshInterval = 2000; // Start with 2-second intervals
+
+            // Function to Update Status Display
+            function updateStatusDisplay(data) {
+                // Update Progress Bar
+                const progress = (data.step / 5) * 100;
+                const progressBar = document.getElementById('progress-bar');
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                
+                // Update Status Message
+                document.getElementById('status-message').textContent = data.message;
+                document.getElementById('current-step').textContent = `Step ${data.step}/5`;
+                
+                // Handle Queue Position
+                const queueStatus = document.getElementById('queue-status');
+                if (data.step === 0 && !data.complete) {
+                    queueStatus.textContent = data.message;
+                    document.getElementById('processing-spinner').classList.add('d-none');
+                } else {
+                    queueStatus.textContent = `Last update: ${new Date(data.timestamp * 1000).toLocaleTimeString()}`;
+                    document.getElementById('processing-spinner').classList.remove('d-none');
+                }
+
+                // Handle Completion
+                if (data.complete) {
+                    if (data.message.includes('Error')) {
+                        document.getElementById('error-container').classList.remove('d-none');
+                        document.getElementById('error-container').textContent = data.message;
+                        document.getElementById('processing-spinner').classList.add('d-none');
+                    } else {
+                        window.location.href = '/covers';
+                    }
+                }
+            }
+
+            // Function to Check Status
             function checkStatus() {
                 fetch(`/status/${taskId}`)
                     .then(response => response.json())
                     .then(data => {
-                        const progress = (data.step/5) * 100;
-                        document.getElementById('progress-bar').style.width = `${progress}%`;
-                        document.getElementById('status-message').textContent = data.message;
-
-                        if (data.complete) {
-                            if (data.message.includes('Error')) {
-                                document.getElementById('progress-container').innerHTML = `
-                                    <div class="alert alert-danger">${data.message}</div>
-                                `;
-                            } else {
-                                window.location.href = '/covers';
-                            }
-                        } else {
-                            setTimeout(checkStatus, 2000);
+                        updateStatusDisplay(data);
+                        
+                        if (!data.complete) {
+                            // Gradually increase interval up to 5 seconds
+                            refreshInterval = Math.min(refreshInterval + 1000, 5000);
+                            setTimeout(checkStatus, refreshInterval);
                         }
+                    })
+                    .catch(error => {
+                        console.error('Error checking status:', error);
+                        setTimeout(checkStatus, 5000);
                     });
             }
 
-            // Initial check
-            setTimeout(checkStatus, 2000);
+            // Initial Check After 1 Second
+            setTimeout(checkStatus, 1000);
         </script>
         {% endif %}
     </div>
