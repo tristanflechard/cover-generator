@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Generated Covers</h2>
+
+{% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row">
+    {% for cover in covers %}
+    <div class="col-md-6">
+        <div class="cover-card">
+            <h5>{{ cover.filename }}</h5>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted">Size: {{ cover.size }} MB</span>
+                <span class="text-muted">{{ cover.created|datetime }}</span>
+            </div>
+            
+            <audio controls class="audio-player">
+                <source src="{{ url_for('serve_audio', filename=cover.filename) }}" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+            
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('download_file', filename=cover.filename) }}" 
+                   class="btn btn-success">
+                   Download
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col">
+        <div class="alert alert-info">No covers generated yet</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

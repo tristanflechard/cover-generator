@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h2 class="mb-4">Generate AI Cover</h2>
+        
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        
+        {% if message %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="mb-3">
+                <label for="youtube_url" class="form-label">YouTube URL:</label>
+                <input type="url" class="form-control" id="youtube_url" name="youtube_url" 
+                       placeholder="https://youtube.com/watch?v=..." required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="selected_model" class="form-label">Select Model:</label>
+                <select class="form-select" id="selected_model" name="selected_model" required>
+                    <option value="">Choose a model...</option>
+                    {% for model in models %}
+                        <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Generate Cover</button>
+        </form>
+
+        {% if task_id %}
+        <div class="mt-4" id="progress-container">
+            <h4>Processing Status</h4>
+            <div class="progress mb-2">
+                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+            </div>
+            <p id="status-message">Starting processing...</p>
+        </div>
+
+        <script>
+            const taskId = "{{ task_id }}";
+            
+            function checkStatus() {
+                fetch(`/status/${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const progress = (data.step/5) * 100;
+                        document.getElementById('progress-bar').style.width = `${progress}%`;
+                        document.getElementById('status-message').textContent = data.message;
+
+                        if (data.complete) {
+                            if (data.message.includes('Error')) {
+                                document.getElementById('progress-container').innerHTML = `
+                                    <div class="alert alert-danger">${data.message}</div>
+                                `;
+                            } else {
+                                window.location.href = '/covers';
+                            }
+                        } else {
+                            setTimeout(checkStatus, 2000);
+                        }
+                    });
+            }
+
+            // Initial check
+            setTimeout(checkStatus, 2000);
+        </script>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
